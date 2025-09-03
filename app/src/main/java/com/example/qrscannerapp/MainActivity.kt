@@ -12,6 +12,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.util.Size
+import androidx.activity.result.ActivityResultLauncher
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -25,6 +26,10 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.collections.get
+import android.widget.ImageButton
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +38,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var resultTextView: TextView
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var barcodeScanner: BarcodeScanner
+
+    private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +52,32 @@ class MainActivity : AppCompatActivity() {
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         barcodeScanner = BarcodeScanning.getClient()
+
+        val galleryButton = findViewById<ImageButton>(R.id.imageButton2)
+        galleryButton.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/*"
+            galleryLauncher.launch(intent)
+        }
+        galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            if (result.resultCode == RESULT_OK && data != null) {
+                val uri = data.data
+                if (uri != null) {
+                    val image = InputImage.fromFilePath(this, uri)
+                    barcodeScanner.process(image)
+                        .addOnSuccessListener { barcodes ->
+                            for (barcode in barcodes) {
+                                handleBarcode(barcode)
+                            }
+                        }
+                        .addOnFailureListener {
+                            resultTextView.text = "Failed to scan"
+                        }
+                }
+            }
+        }
+
 
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission())
@@ -92,6 +125,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    @OptIn(ExperimentalGetImage::class)
     private fun processImageProxy(imageProxy: ImageProxy) {
         // Image processing logic here
         val mediaImage= imageProxy.image
