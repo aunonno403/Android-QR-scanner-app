@@ -2,6 +2,8 @@ package com.example.qrscannerapp
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
@@ -12,6 +14,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.util.Size
+import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -28,8 +31,11 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.collections.get
 import android.widget.ImageButton
+import android.widget.ImageView
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
+import androidx.core.graphics.scale
 
 
 class MainActivity : AppCompatActivity() {
@@ -41,6 +47,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
 
+    private lateinit var scannedImageView: ImageView
+    private var isShowingScannedImage = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,9 +58,11 @@ class MainActivity : AppCompatActivity() {
 
         previewView = findViewById(R.id.previewView)
         resultTextView = findViewById(R.id.resultTextView)
+        scannedImageView = findViewById(R.id.scannedImageView)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         barcodeScanner = BarcodeScanning.getClient()
+
 
         val galleryButton = findViewById<ImageButton>(R.id.imageButton2)
         galleryButton.setOnClickListener {
@@ -64,6 +75,25 @@ class MainActivity : AppCompatActivity() {
             if (result.resultCode == RESULT_OK && data != null) {
                 val uri = data.data
                 if (uri != null) {
+                    // Show image in ImageView, hide PreviewView
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+
+                    scannedImageView.post {
+                        val scaledBitmap = originalBitmap.scale(
+                            scannedImageView.width.coerceAtLeast(1),
+                            scannedImageView.height.coerceAtLeast(1)
+                        )
+                        scannedImageView.setImageBitmap(scaledBitmap)
+                        scannedImageView.visibility = View.VISIBLE
+                        previewView.visibility = View.GONE
+                        isShowingScannedImage = true
+                    }
+                    scannedImageView.visibility = View.VISIBLE
+                    previewView.visibility = View.GONE
+                    isShowingScannedImage = true
+
                     val image = InputImage.fromFilePath(this, uri)
                     barcodeScanner.process(image)
                         .addOnSuccessListener { barcodes ->
@@ -78,7 +108,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission())
         { isGranted: Boolean ->
@@ -90,6 +119,19 @@ class MainActivity : AppCompatActivity() {
 
         }
         requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isShowingScannedImage) {
+                    scannedImageView.visibility = View.GONE
+                    previewView.visibility = View.VISIBLE
+                    isShowingScannedImage = false
+                } else {
+                    finish()
+                }
+            }
+        })
+
 
     }
 
@@ -168,4 +210,6 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         cameraExecutor.shutdown()
     }
+
+
 }

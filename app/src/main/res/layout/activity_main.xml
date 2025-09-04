@@ -35,12 +35,24 @@
         android:id="@+id/imageButton2"
         android:layout_width="69dp"
         android:layout_height="112dp"
-        app:srcCompat="@android:drawable/ic_menu_gallery"
         android:contentDescription="Open Gallery"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/previewView"
+        app:srcCompat="@android:drawable/ic_menu_gallery" />
+
+    <ImageView
+        android:id="@+id/scannedImageView"
+        android:layout_width="411dp"
+        android:layout_height="618dp"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.004" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
