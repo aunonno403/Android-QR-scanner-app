@@ -75,30 +75,34 @@ class MainActivity : AppCompatActivity() {
             if (result.resultCode == RESULT_OK && data != null) {
                 val uri = data.data
                 if (uri != null) {
-                    // Show image in ImageView, hide PreviewView
                     val inputStream = contentResolver.openInputStream(uri)
                     val originalBitmap = BitmapFactory.decodeStream(inputStream)
                     inputStream?.close()
 
-                    scannedImageView.post {
-                        val scaledBitmap = originalBitmap.scale(
-                            scannedImageView.width.coerceAtLeast(1),
-                            scannedImageView.height.coerceAtLeast(1)
-                        )
-                        scannedImageView.setImageBitmap(scaledBitmap)
-                        scannedImageView.visibility = View.VISIBLE
-                        previewView.visibility = View.GONE
-                        isShowingScannedImage = true
-                    }
-                    scannedImageView.visibility = View.VISIBLE
-                    previewView.visibility = View.GONE
-                    isShowingScannedImage = true
-
                     val image = InputImage.fromFilePath(this, uri)
                     barcodeScanner.process(image)
                         .addOnSuccessListener { barcodes ->
+                            var found = false
                             for (barcode in barcodes) {
                                 handleBarcode(barcode)
+                                found = true
+                            }
+                            if (!found) {
+                                resultTextView.text = "No QR code detected"
+                            }
+                            // Ensure UI update is on main thread and after scan
+                            scannedImageView.post {
+                                val width = scannedImageView.width
+                                val height = scannedImageView.height
+                                val scaledBitmap = if (width > 0 && height > 0) {
+                                    originalBitmap.scale(width, height)
+                                } else {
+                                    originalBitmap
+                                }
+                                scannedImageView.setImageBitmap(scaledBitmap)
+                                scannedImageView.visibility = View.VISIBLE
+                                previewView.visibility = View.GONE
+                                isShowingScannedImage = true
                             }
                         }
                         .addOnFailureListener {
