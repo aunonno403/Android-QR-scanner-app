@@ -28,7 +28,6 @@
                 android:background="@drawable/lavender_border"
                 android:padding="8dp"
                 android:hint="Email"
-                android:drawableLeft="@drawable/ic_baseline_email_24"
                 android:drawablePadding="8dp"
                 android:textColor="@color/grey"/>
 
@@ -41,7 +40,6 @@
                 android:padding="8dp"
                 android:hint="Password"
                 android:inputType="textPassword"
-                android:drawableLeft="@drawable/ic_baseline_lock_24"
                 android:drawablePadding="8dp"
                 android:textColor="@color/grey"/>
 
@@ -54,7 +52,6 @@
                 android:padding="8dp"
                 android:hint="Confirm Password"
                 android:inputType="textPassword"
-                android:drawableLeft="@drawable/ic_baseline_password_24"
                 android:drawablePadding="8dp"
                 android:textColor="@color/grey"/>
 
@@ -68,15 +65,15 @@
                 app:cornerRadius = "30dp"/>
 
             <TextView
+                android:id="@+id/loginRedirectText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:id="@+id/loginRedirectText"
-                android:text="Already an user? Login"
                 android:layout_gravity="center"
-                android:padding="8dp"
                 android:layout_marginTop="8dp"
-                android:textSize="18sp"
-                android:textColor="@color/lavender"/>
+                android:padding="8dp"
+                android:text="Already an user? Login"
+                android:textColor="@color/lavender"
+                android:textSize="18sp" />
 
         </LinearLayout>
 
