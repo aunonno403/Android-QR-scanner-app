@@ -62,7 +62,5 @@ An Android application that scans QR codes and barcodes using the camera or from
 
 The `google-services.json` file contains sensitive API keys and is not included in the repository. You must obtain your own from Firebase Console.
 
-## License
 
-[Your License Here]
 
