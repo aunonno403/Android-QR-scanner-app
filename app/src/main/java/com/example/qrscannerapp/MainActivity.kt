@@ -16,6 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import android.util.Size
 import android.view.View
 import androidx.activity.result.ActivityResultLauncher
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -50,6 +51,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var scannedImageView: ImageView
     private var isShowingScannedImage = false
 
+    private var camera: Camera? = null
+    private var isFlashOn = false
+    private lateinit var flashButton: ImageButton
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,9 +64,15 @@ class MainActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         resultTextView = findViewById(R.id.resultTextView)
         scannedImageView = findViewById(R.id.scannedImageView)
+        flashButton = findViewById(R.id.flashButton)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         barcodeScanner = BarcodeScanning.getClient()
+
+        // Flash button click listener
+        flashButton.setOnClickListener {
+            toggleFlash()
+        }
 
 
         val galleryButton = findViewById<ImageButton>(R.id.imageButton2)
@@ -163,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-            cameraProvider.bindToLifecycle(
+            camera = cameraProvider.bindToLifecycle(
                 this, cameraSelector, preview, imageAnalyzer
             )
 
@@ -208,6 +219,26 @@ class MainActivity : AppCompatActivity() {
             resultTextView.text = "No QR code detected"
         }
 
+    }
+
+    private fun toggleFlash() {
+        camera?.let {
+            if (it.cameraInfo.hasFlashUnit()) {
+                isFlashOn = !isFlashOn
+                it.cameraControl.enableTorch(isFlashOn)
+
+                // Update button appearance based on flash state
+                if (isFlashOn) {
+                    flashButton.setImageResource(android.R.drawable.ic_menu_day)
+                    flashButton.alpha = 1.0f
+                } else {
+                    flashButton.setImageResource(android.R.drawable.ic_menu_day)
+                    flashButton.alpha = 0.5f
+                }
+            } else {
+                resultTextView.text = "Flash not available"
+            }
+        }
     }
 
     override fun onDestroy() {
