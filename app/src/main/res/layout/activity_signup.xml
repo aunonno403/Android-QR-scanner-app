@@ -6,22 +6,24 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/signupbkg"
+    android:fillViewport="true"
     tools:context=".SignupActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:gravity="center">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="320dp"
-            android:padding="20dp">
+            android:padding="20dp"
+            android:layout_gravity="center">
 
             <EditText
-                android:layout_width="350dp"
+                android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:id="@+id/signup_email"
                 android:layout_marginTop="30dp"
@@ -29,10 +31,12 @@
                 android:padding="8dp"
                 android:hint="Email"
                 android:drawablePadding="8dp"
-                android:textColor="@color/grey"/>
+                android:textColor="@color/grey"
+                android:inputType="textEmailAddress"
+                android:autofillHints="emailAddress"/>
 
             <EditText
-                android:layout_width="350dp"
+                android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:id="@+id/signup_password"
                 android:layout_marginTop="20dp"
@@ -41,10 +45,11 @@
                 android:hint="Password"
                 android:inputType="textPassword"
                 android:drawablePadding="8dp"
-                android:textColor="@color/grey"/>
+                android:textColor="@color/grey"
+                android:autofillHints="password"/>
 
             <EditText
-                android:layout_width="350dp"
+                android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:id="@+id/signup_confirm"
                 android:layout_marginTop="20dp"
@@ -53,10 +58,11 @@
                 android:hint="Confirm Password"
                 android:inputType="textPassword"
                 android:drawablePadding="8dp"
-                android:textColor="@color/grey"/>
+                android:textColor="@color/grey"
+                android:autofillHints="password"/>
 
             <Button
-                android:layout_width="350dp"
+                android:layout_width="match_parent"
                 android:layout_height="70dp"
                 android:layout_marginTop="30dp"
                 android:text="Sign Up"
