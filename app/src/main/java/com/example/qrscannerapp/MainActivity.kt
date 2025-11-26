@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
@@ -37,8 +38,8 @@ import android.util.Patterns
 import androidx.appcompat.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Context
 import android.widget.Toast
+import com.example.qrscannerapp.repository.ScanHistoryRepository
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,6 +60,9 @@ class MainActivity : AppCompatActivity() {
     // Keep last scanned raw value for dialog actions
     private var lastScannedValue: String? = null
 
+    // Firebase repository for scan history
+    private val scanHistoryRepository = ScanHistoryRepository()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -75,6 +79,13 @@ class MainActivity : AppCompatActivity() {
         // Flash button click listener
         flashButton.setOnClickListener {
             toggleFlash()
+        }
+
+        // History button click listener
+        val historyButton = findViewById<ImageButton>(R.id.historyButton)
+        historyButton.setOnClickListener {
+            val intent = Intent(this, ScanHistoryActivity::class.java)
+            startActivity(intent)
         }
 
 
@@ -201,6 +212,10 @@ class MainActivity : AppCompatActivity() {
         val isHttpUrl = urlCandidate != null && isValidHttpUrl(urlCandidate)
         resultTextView.text = rawValue
 
+        // Determine scan type and save to Firebase
+        val scanType = determineScanType(rawValue, isHttpUrl)
+        saveScanToFirebase(rawValue, scanType)
+
         if (isHttpUrl) {
             // URL case: clicking opens WebViewActivity
             resultTextView.setOnClickListener {
@@ -212,6 +227,27 @@ class MainActivity : AppCompatActivity() {
         } else {
             // Non-URL case: show dialog with options
             resultTextView.setOnClickListener { showNonUrlDialog(rawValue) }
+        }
+    }
+
+    private fun determineScanType(value: String, isHttpUrl: Boolean): String {
+        return when {
+            isHttpUrl -> "URL"
+            Patterns.EMAIL_ADDRESS.matcher(value).matches() -> "EMAIL"
+            Patterns.PHONE.matcher(value).matches() -> "PHONE"
+            else -> "TEXT"
+        }
+    }
+
+    private fun saveScanToFirebase(content: String, type: String) {
+        scanHistoryRepository.saveScan(content, type) { success, errorMessage ->
+            if (!success) {
+                Log.e("MainActivity", "Failed to save scan to Firebase: $errorMessage")
+                // Optionally show error to user
+                // Toast.makeText(this, "Failed to save: $errorMessage", Toast.LENGTH_SHORT).show()
+            } else {
+                Log.d("MainActivity", "Scan saved successfully to Firebase")
+            }
         }
     }
 
@@ -247,7 +283,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun copyToClipboard(text: String) {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.qr_content_label), text))
     }
 

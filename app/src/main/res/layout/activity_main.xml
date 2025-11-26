@@ -43,11 +43,21 @@
         app:layout_constraintBottom_toTopOf="@id/flashButton" />
 
     <ImageButton
+        android:id="@+id/historyButton"
+        android:layout_width="69dp"
+        android:layout_height="112dp"
+        android:contentDescription="@string/scan_history"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_recent_history" />
+
+    <ImageButton
         android:id="@+id/flashButton"
         android:layout_width="69dp"
         android:layout_height="112dp"
         android:contentDescription="@string/toggle_flash"
         app:layout_constraintEnd_toStartOf="@id/imageButton2"
+        app:layout_constraintStart_toEndOf="@id/historyButton"
         app:layout_constraintBottom_toBottomOf="parent"
         app:srcCompat="@drawable/flash_icon" />
 
