@@ -1,6 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">QRscannerapp</string>
-    <string name="toggle_flash">Toggle Flash</string>
-    <string name="open_gallery">Open Gallery</string>
-    <string name="scanned_image">Scanned Image</string>
+    <string name="no_qr_detected">No QR code detected</string>
+    <string name="failed_to_scan">Failed to scan</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="flash_not_available">Flash not available</string>
+    <string name="scanned_content_title">Scanned Content</string>
+    <string name="copied">Copied</string>
+    <string name="share_qr_content">Share QR content</string>
+    <string name="copy">Copy</string>
+    <string name="share">Share</string>
+    <string name="close">Close</string>
+    <string name="qr_content_label">QR Content</string>
+    <string name="toggle_flash">Toggle flash</string>
+    <string name="open_gallery">Open gallery</string>
+    <string name="scanned_image">Scanned image</string>
 </resources>
+
