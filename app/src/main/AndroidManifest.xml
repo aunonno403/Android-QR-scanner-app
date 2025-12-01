@@ -41,6 +41,7 @@
             android:exported="true">
 
         </activity>
+        <activity android:name=".QrGeneratorActivity" />
     </application>
 
 </manifest>

@@ -1,5 +1,6 @@
 package com.example.qrscannerapp
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     // Firebase repository for scan history
     private val scanHistoryRepository = ScanHistoryRepository()
 
+    @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -88,13 +90,18 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-
         val galleryButton = findViewById<ImageButton>(R.id.imageButton2)
         galleryButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
             galleryLauncher.launch(intent)
         }
+
+        // QR generator button click listener (null-safe)
+        (findViewById<View>(R.id.qrGeneratorButton) as? ImageButton)?.setOnClickListener {
+            startActivity(Intent(this, QrGeneratorActivity::class.java))
+        }
+
         galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val data = result.data
             if (result.resultCode == RESULT_OK && data != null) {
