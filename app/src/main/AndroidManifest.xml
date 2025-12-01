@@ -42,6 +42,7 @@
 
         </activity>
         <activity android:name=".QrGeneratorActivity" />
+        <activity android:name=".ProfileActivity" />
     </application>
 
 </manifest>

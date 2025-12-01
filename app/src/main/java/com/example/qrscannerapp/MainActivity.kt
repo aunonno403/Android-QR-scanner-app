@@ -64,6 +64,14 @@ class MainActivity : AppCompatActivity() {
     // Firebase repository for scan history
     private val scanHistoryRepository = ScanHistoryRepository()
 
+    // Debounce mechanism to prevent duplicate scans
+    private var lastSavedQrCode: String? = null
+    private var lastSavedTimestamp: Long = 0
+    private val SCAN_DEBOUNCE_INTERVAL = 5000L // 5 seconds - adjust as needed
+    private val RESCAN_CONFIRMATION_THRESHOLD = 10000L // 10 seconds - show popup after this
+    private var rescanDialogShown: Boolean = false
+    private var firstScanTimestamp: Long = 0
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +95,13 @@ class MainActivity : AppCompatActivity() {
         val historyButton = findViewById<ImageButton>(R.id.historyButton)
         historyButton.setOnClickListener {
             val intent = Intent(this, ScanHistoryActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Profile button click listener
+        val profileButton = findViewById<ImageButton>(R.id.profileButton)
+        profileButton.setOnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java)
             startActivity(intent)
         }
 
@@ -214,6 +229,16 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // If we detect a different QR code, reset the debounce tracking
+        // This allows the same code to be saved again after scanning a different code
+        if (rawValue != lastSavedQrCode) {
+            Log.d("MainActivity", "New QR code detected, resetting debounce: $rawValue")
+            lastSavedQrCode = null
+            lastSavedTimestamp = 0
+            rescanDialogShown = false
+            firstScanTimestamp = System.currentTimeMillis()
+        }
+
         // Require explicit http/https scheme for WebView; if missing but looks like domain, we can prepend.
         val urlCandidate = buildHttpUrlIfNeeded(rawValue)
         val isHttpUrl = urlCandidate != null && isValidHttpUrl(urlCandidate)
@@ -247,14 +272,68 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveScanToFirebase(content: String, type: String) {
+        val currentTime = System.currentTimeMillis()
+
+        // Check if this is a duplicate scan within the debounce interval
+        if (content == lastSavedQrCode && (currentTime - lastSavedTimestamp) < SCAN_DEBOUNCE_INTERVAL) {
+            Log.d("MainActivity", "Duplicate scan detected, skipping save: $content")
+
+            // Check if user has been scanning the same code for more than 10 seconds
+            if (!rescanDialogShown && (currentTime - firstScanTimestamp) > RESCAN_CONFIRMATION_THRESHOLD) {
+                rescanDialogShown = true
+                showRescanConfirmationDialog(content, type)
+            }
+            return
+        }
+
+        // Update tracking variables
+        lastSavedQrCode = content
+        lastSavedTimestamp = currentTime
+
+        // Set first scan timestamp if this is a new code
+        if (firstScanTimestamp == 0L) {
+            firstScanTimestamp = currentTime
+        }
+
         scanHistoryRepository.saveScan(content, type) { success, errorMessage ->
             if (!success) {
                 Log.e("MainActivity", "Failed to save scan to Firebase: $errorMessage")
                 // Optionally show error to user
                 // Toast.makeText(this, "Failed to save: $errorMessage", Toast.LENGTH_SHORT).show()
             } else {
-                Log.d("MainActivity", "Scan saved successfully to Firebase")
+                Log.d("MainActivity", "Scan saved successfully to Firebase: $content")
             }
+        }
+    }
+
+    private fun showRescanConfirmationDialog(content: String, type: String) {
+        runOnUiThread {
+            AlertDialog.Builder(this)
+                .setTitle("Continue Scanning?")
+                .setMessage("You've been scanning the same QR code for a while. Do you want to scan it again?")
+                .setPositiveButton("Yes, Scan Again") { dialog, _ ->
+                    // Reset tracking to allow immediate rescan
+                    lastSavedQrCode = null
+                    lastSavedTimestamp = 0
+                    firstScanTimestamp = System.currentTimeMillis()
+                    rescanDialogShown = false
+
+                    // Save the scan immediately
+                    saveScanToFirebase(content, type)
+
+                    Toast.makeText(this, "QR code scanned again", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                }
+                .setNegativeButton("No, Keep Current") { dialog, _ ->
+                    // Reset the dialog shown flag after a delay to allow showing it again later
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        rescanDialogShown = false
+                    }, RESCAN_CONFIRMATION_THRESHOLD)
+
+                    dialog.dismiss()
+                }
+                .setCancelable(false)
+                .show()
         }
     }
 

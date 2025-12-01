@@ -28,6 +28,19 @@
             android:scaleType="centerCrop"
             android:visibility="gone"
             android:contentDescription="@string/scanned_image" />
+
+        <ImageButton
+            android:id="@+id/profileButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_margin="16dp"
+            android:background="@drawable/rounded_background"
+            android:contentDescription="User Profile"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_myplaces"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/lavender" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <TextView
@@ -73,12 +86,12 @@
 
     <ImageButton
         android:id="@+id/qrGeneratorButton"
-        android:layout_width="69dp"
+        android:layout_width="0dp"
         android:layout_height="112dp"
         android:contentDescription="@string/open_qr_generator"
-        app:layout_constraintStart_toEndOf="@id/imageButton2"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/imageButton2"
         app:srcCompat="@android:drawable/ic_menu_edit" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
