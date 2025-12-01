@@ -16,14 +16,27 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.qrscannerapp.adapter.ScanHistoryAdapter
 import com.example.qrscannerapp.models.ScanHistory
 import com.example.qrscannerapp.repository.ScanHistoryRepository
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 
 class ScanHistoryActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyTextView: TextView
     private lateinit var progressBar: ProgressBar
+    private lateinit var filterChipGroup: ChipGroup
+    private lateinit var chipAll: Chip
+    private lateinit var chipScanned: Chip
+    private lateinit var chipGenerated: Chip
     private lateinit var adapter: ScanHistoryAdapter
     private val repository = ScanHistoryRepository()
+    private var allScans: List<ScanHistory> = emptyList()
+
+    enum class FilterType {
+        ALL, SCANNED, GENERATED
+    }
+
+    private var currentFilter: FilterType = FilterType.ALL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,9 +45,29 @@ class ScanHistoryActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.historyRecyclerView)
         emptyTextView = findViewById(R.id.emptyTextView)
         progressBar = findViewById(R.id.progressBar)
+        filterChipGroup = findViewById(R.id.filterChipGroup)
+        chipAll = findViewById(R.id.chipAll)
+        chipScanned = findViewById(R.id.chipScanned)
+        chipGenerated = findViewById(R.id.chipGenerated)
 
         setupRecyclerView()
+        setupFilterChips()
         loadScanHistory()
+    }
+
+    private fun setupFilterChips() {
+        filterChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+
+            currentFilter = when (checkedIds[0]) {
+                R.id.chipAll -> FilterType.ALL
+                R.id.chipScanned -> FilterType.SCANNED
+                R.id.chipGenerated -> FilterType.GENERATED
+                else -> FilterType.ALL
+            }
+
+            applyFilter()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -65,14 +98,30 @@ class ScanHistoryActivity : AppCompatActivity() {
                 return@getUserScans
             }
 
-            if (scans.isNullOrEmpty()) {
-                emptyTextView.visibility = View.VISIBLE
-                recyclerView.visibility = View.GONE
-            } else {
-                emptyTextView.visibility = View.GONE
-                recyclerView.visibility = View.VISIBLE
-                adapter.updateScans(scans)
+            allScans = scans ?: emptyList()
+            applyFilter()
+        }
+    }
+
+    private fun applyFilter() {
+        val filteredScans = when (currentFilter) {
+            FilterType.ALL -> allScans
+            FilterType.SCANNED -> allScans.filter { it.type != "GENERATED" }
+            FilterType.GENERATED -> allScans.filter { it.type == "GENERATED" }
+        }
+
+        if (filteredScans.isEmpty()) {
+            emptyTextView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+            emptyTextView.text = when (currentFilter) {
+                FilterType.ALL -> "No scan history yet.\nStart scanning QR codes!"
+                FilterType.SCANNED -> "No scanned QR codes yet.\nScan a QR code to see it here!"
+                FilterType.GENERATED -> "No generated QR codes yet.\nGenerate a QR code to see it here!"
             }
+        } else {
+            emptyTextView.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+            adapter.updateScans(filteredScans)
         }
     }
 
@@ -130,14 +179,11 @@ class ScanHistoryActivity : AppCompatActivity() {
     private fun deleteScan(scan: ScanHistory) {
         repository.deleteScan(scan.id) { success, error ->
             if (success) {
-                adapter.removeScan(scan)
                 Toast.makeText(this, "Scan deleted", Toast.LENGTH_SHORT).show()
 
-                // Check if list is empty after deletion
-                if (adapter.itemCount == 0) {
-                    emptyTextView.visibility = View.VISIBLE
-                    recyclerView.visibility = View.GONE
-                }
+                // Remove from allScans list and reapply filter
+                allScans = allScans.filter { it.id != scan.id }
+                applyFilter()
             } else {
                 Toast.makeText(this, "Failed to delete: $error", Toast.LENGTH_SHORT).show()
             }

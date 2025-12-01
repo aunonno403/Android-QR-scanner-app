@@ -9,11 +9,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.example.qrscannerapp.databinding.ActivityQrGeneratorBinding
 import com.example.qrscannerapp.qrgenerator.QrGenerator
+import com.example.qrscannerapp.repository.ScanHistoryRepository
 
 class QrGeneratorActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityQrGeneratorBinding
     private var lastBitmap: Bitmap? = null
+    private val repository = ScanHistoryRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +32,17 @@ class QrGeneratorActivity : AppCompatActivity() {
             val bitmap = QrGenerator.generate(text)
             lastBitmap = bitmap
             binding.qrImage.setImageBitmap(bitmap)
+
+            // Save generated QR content into scan history (cloud via Firebase)
+            repository.saveScan(text, "GENERATED") { success, error ->
+                runOnUiThread {
+                    if (success) {
+                        Toast.makeText(this, "Saved generated QR to history", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Failed to save to history: ${error ?: "unknown"}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
 
         binding.saveButton.setOnClickListener {
