@@ -66,12 +66,19 @@
         android:layout_width="69dp"
         android:layout_height="112dp"
         android:contentDescription="@string/open_gallery"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/qrGeneratorButton"
+        app:layout_constraintStart_toEndOf="@id/flashButton"
         app:layout_constraintBottom_toBottomOf="parent"
         app:srcCompat="@android:drawable/ic_menu_gallery" />
 
-
+    <ImageButton
+        android:id="@+id/qrGeneratorButton"
+        android:layout_width="69dp"
+        android:layout_height="112dp"
+        android:contentDescription="@string/open_qr_generator"
+        app:layout_constraintStart_toEndOf="@id/imageButton2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_edit" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

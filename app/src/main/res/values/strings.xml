@@ -16,5 +16,5 @@
     <string name="open_gallery">Open gallery</string>
     <string name="scanned_image">Scanned image</string>
     <string name="scan_history">Scan history</string>
+    <string name="open_qr_generator">Open QR generator</string>
 </resources>
-
