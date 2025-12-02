@@ -23,14 +23,19 @@ This is a **QR Scanner Application** built for Android using **Kotlin**. It allo
 ## 🎯 What Does This App Do?
 
 ### Core Features:
-1. **User Authentication**: Users can sign up and log in using email and password
-2. **Real-time QR Scanning**: Point your camera at a QR code to scan it instantly
-3. **Gallery Scanning**: Select an image from your phone to extract QR codes
-4. **Smart Detection**: Automatically identifies if the scanned content is a URL, email, phone number, or plain text
-5. **URL Viewing**: Opens URLs in a built-in browser (WebView)
-6. **Scan History**: All scans are saved to Firebase and displayed in a list
-7. **Content Actions**: Copy, share, or delete scanned content
-8. **Flashlight**: Toggle your phone's flash for scanning in dark environments
+1. **Offline/Online Mode**: Choose between offline mode (local scanning only) or online mode (with cloud features)
+2. **User Authentication**: Users can sign up and log in using email and password (online mode)
+3. **Real-time QR Scanning**: Point your camera at a QR code to scan it instantly
+4. **Duplicate Scan Prevention**: Smart detection prevents the same QR code from being registered multiple times
+5. **Gallery Scanning**: Select an image from your phone to extract QR codes
+6. **QR Code Generator**: Create your own QR codes from any text or URL
+7. **Smart Detection**: Automatically identifies if the scanned content is a URL, email, phone number, or plain text
+8. **URL Viewing**: Opens URLs in a built-in browser (WebView)
+9. **Scan History with Filters**: All scans are saved to Firebase with filters for Scanned/Generated/All entries
+10. **Content Actions**: Copy, share, or delete scanned content
+11. **Flashlight**: Toggle your phone's flash for scanning in dark environments
+12. **User Profile Management**: View your profile with statistics and logout option
+13. **Mode Switching**: Change between online and offline mode anytime from settings
 
 ---
 
@@ -49,11 +54,15 @@ This is a **QR Scanner Application** built for Android using **Kotlin**. It allo
 ### CameraX
 - **CameraX (v1.5.0)**: Google's modern camera library that makes working with the camera easier
 
+### QR Code Generation
+- **ZXing (Zebra Crossing)**: Library for generating QR codes from text/URLs
+
 ### Android UI Components
 - **ViewBinding**: Safer way to access UI elements (no more `findViewById`)
 - **RecyclerView**: Efficient list display for scan history
-- **Material Design 3**: Modern UI design components
+- **Material Design 3**: Modern UI design components including Chips for filtering
 - **ConstraintLayout**: Flexible layout system for responsive UI
+- **SharedPreferences**: Local storage for app mode and settings
 
 ---
 
@@ -66,23 +75,29 @@ QRscannerapp/
 ├── app/
 │   ├── src/main/
 │   │   ├── java/com/example/qrscannerapp/
-│   │   │   ├── LoginActivity.kt           # Login screen
-│   │   │   ├── SignupActivity.kt          # Registration screen
-│   │   │   ├── MainActivity.kt            # Main QR scanning screen
-│   │   │   ├── ScanHistoryActivity.kt     # Shows scan history
-│   │   │   ├── WebViewActivity.kt         # Opens URLs
+│   │   │   ├── SplashActivity.kt           # Splash screen on app launch
+│   │   │   ├── LoginActivity.kt            # Login screen
+│   │   │   ├── SignupActivity.kt           # Registration screen
+│   │   │   ├── MainActivity.kt             # Main QR scanning screen
+│   │   │   ├── ScanHistoryActivity.kt      # Shows scan history with filters
+│   │   │   ├── QrGeneratorActivity.kt      # QR code generator screen
+│   │   │   ├── WebViewActivity.kt          # Opens URLs
+│   │   │   ├── ProfileActivity.kt          # User profile with stats
+│   │   │   ├── AppMode.kt                  # Manages offline/online mode
 │   │   │   ├── models/
-│   │   │   │   └── ScanHistory.kt         # Data model for scans
+│   │   │   │   └── ScanHistory.kt          # Data model for scans
 │   │   │   ├── repository/
 │   │   │   │   └── ScanHistoryRepository.kt  # Firebase operations
-│   │   │   └── adapter/
-│   │   │       └── ScanHistoryAdapter.kt  # RecyclerView adapter
+│   │   │   ├── adapter/
+│   │   │   │   └── ScanHistoryAdapter.kt   # RecyclerView adapter
+│   │   │   └── qrgenerator/
+│   │   │       └── QrGenerator.kt          # QR code generation logic
 │   │   ├── res/
-│   │   │   ├── layout/                    # XML layout files
-│   │   │   ├── values/                    # Strings, colors, themes
-│   │   │   └── drawable/                  # Images and icons
-│   │   └── AndroidManifest.xml            # App configuration
-│   └── build.gradle.kts                   # App dependencies
+│   │   │   ├── layout/                     # XML layout files
+│   │   │   ├── values/                     # Strings, colors, themes
+│   │   │   └── drawable/                   # Images and icons
+│   │   └── AndroidManifest.xml             # App configuration
+│   └── build.gradle.kts                    # App dependencies
 ```
 
 ### Architecture Layers:
@@ -98,13 +113,24 @@ QRscannerapp/
 
 ### 1. App Launch Flow
 ```
-App Starts 
+App Starts
     ↓
-LoginActivity (First Screen)
+SplashActivity (2-second splash screen)
     ↓
-User Choice:
-    ├── Has Account? → Enter credentials → Firebase Authentication → MainActivity
-    └── No Account? → Click "Sign Up" → SignupActivity → Create account → Back to Login
+MainActivity loads → Check AppMode
+    ↓
+Show Mode Selection Dialog:
+    ├── User Selects "Online Mode"
+    │   ↓
+    │   Navigate to LoginActivity
+    │   ↓
+    │   User Choice:
+    │   ├── Has Account? → Enter credentials → Firebase Authentication → MainActivity (Online)
+    │   └── No Account? → Click "Sign Up" → SignupActivity → Create account → Back to Login
+    │
+    └── User Selects "Offline Mode"
+        ↓
+        MainActivity (Offline) - Scanning & Generation Only
 ```
 
 ### 2. Main Scanning Flow
@@ -118,15 +144,25 @@ Camera Starts (CameraX)
 Continuous Frame Analysis (ML Kit)
     ↓
 QR Code Detected?
-    ├── YES → Extract Data → Determine Type (URL/TEXT/EMAIL/PHONE)
+    ├── YES → Extract Data → Check if same as last scan
     │         ↓
-    │         Save to Firebase
-    │         ↓
-    │         Display Result
-    │         ↓
-    │         User Actions:
-    │         ├── If URL: Click to open in WebView
-    │         └── If Text: Click to Copy/Share
+    │         Same Code?
+    │         ├── YES → Check time elapsed
+    │         │   ├── < 5 seconds → Ignore (prevent duplicates)
+    │         │   ├── 5-10 seconds → Continue scanning
+    │         │   └── > 10 seconds → Show "Continue scanning?" dialog
+    │         │
+    │         └── NO → New Code Detected
+    │               ↓
+    │               Determine Type (URL/TEXT/EMAIL/PHONE/GENERATED)
+    │               ↓
+    │               Save to Firebase (if online)
+    │               ↓
+    │               Display Result
+    │               ↓
+    │               User Actions:
+    │               ├── If URL: Click to open in WebView
+    │               └── If Text: Click to Copy/Share
     └── NO → Keep Scanning
 ```
 
@@ -145,7 +181,28 @@ QR Code Found?
     └── NO → Show "No QR Code Detected"
 ```
 
-### 4. History Flow
+### 4. QR Code Generator Flow
+```
+User Clicks "Open QR Generator" Button
+    ↓
+QrGeneratorActivity Opens
+    ↓
+User Enters Text or URL
+    ↓
+Click "Generate QR Code"
+    ↓
+ZXing Library Creates QR Code Bitmap
+    ↓
+Display QR Code Image
+    ↓
+Save to Firebase (if online mode) as type "GENERATED"
+    ↓
+User Actions:
+    ├── Save to Gallery: Download QR code as image
+    └── Share: Share QR code to other apps
+```
+
+### 5. History Flow
 ```
 User Clicks History Button
     ↓
@@ -155,6 +212,11 @@ Firebase Query: Get All User Scans
     ↓
 Display in RecyclerView (List)
     ↓
+Filter Options (Material Chips):
+    ├── All: Show all scans
+    ├── Scanned: Show only camera/gallery scans
+    └── Generated: Show only QR codes created by user
+    ↓
 User Actions Per Item:
     ├── Click Item: Open content or URL
     ├── Copy: Copy to clipboard
@@ -162,13 +224,100 @@ User Actions Per Item:
     └── Delete: Remove from Firebase and list
 ```
 
+### 6. Mode Switching Flow
+```
+User in MainActivity (Online or Offline)
+    ↓
+Click Menu → "Change Mode"
+    ↓
+Mode Selection Dialog Appears
+    ↓
+User Selects New Mode:
+    ├── Switch to Online → Navigate to LoginActivity
+    │   ↓
+    │   Login → Return to MainActivity (Online)
+    │
+    └── Switch to Offline → Set offline mode
+        ↓
+        Reload MainActivity (Offline features only)
+```
+
+### 7. Profile Management Flow
+```
+User Clicks Profile Icon (Online Mode Only)
+    ↓
+ProfileActivity Opens
+    ↓
+Display User Information:
+    ├── Email Address
+    ├── User ID
+    └── Account creation date
+    ↓
+User Actions:
+    └── Logout: Sign out and return to mode selection
+```
+
 ---
 
 ## 🔍 Detailed Component Breakdown
 
-### 1. LoginActivity.kt
+### 1. SplashActivity.kt
 
-**Purpose**: First screen users see - handles user authentication
+**Purpose**: Initial screen shown when app launches
+
+**What it does**:
+```kotlin
+// Key Components:
+- Displays app logo/branding
+- Shows for 2 seconds
+- Navigates to MainActivity automatically
+
+// Process:
+1. App starts
+2. Show splash screen
+3. Wait 2 seconds using Handler
+4. Navigate to MainActivity
+5. Finish (remove from back stack)
+
+// Special Features:
+- Uses Handler and Looper for delayed navigation
+- Clean transition without user interaction
+- Professional app launch experience
+```
+
+---
+
+### 2. AppMode.kt
+
+**Purpose**: Manages application mode (online vs offline)
+
+**What it does**:
+```kotlin
+// Key Components:
+- Object class (Singleton pattern)
+- Boolean flag: isOffline
+- SharedPreferences for persistent storage
+
+// Process:
+1. load(): Read saved mode from SharedPreferences on app start
+2. save(): Write current mode to SharedPreferences
+3. isOffline flag checked throughout app
+
+// Usage:
+- If online: Full features (Firebase, History, Profile)
+- If offline: Basic features only (Scan, Generate)
+
+// Why SharedPreferences?
+- Persists mode between app sessions
+- Simple key-value storage
+- Perfect for boolean flags
+```
+
+---
+
+### 3. LoginActivity.kt
+
+**Purpose**: Handles user authentication for online mode
 
 **What it does**:
 ```kotlin
@@ -196,10 +345,12 @@ User Actions Per Item:
 - `signInWithEmailAndPassword()` verifies user credentials
 - ViewBinding connects XML layout to Kotlin code
 - Toast messages show success/error feedback
+- Sets `AppMode.isOffline = false` on successful login
+- Saves mode to SharedPreferences
 
 ---
 
-### 2. SignupActivity.kt
+### 4. SignupActivity.kt
 
 **Purpose**: New user registration
 
@@ -228,7 +379,7 @@ User Actions Per Item:
 
 ---
 
-### 3. MainActivity.kt (Most Complex File)
+### 5. MainActivity.kt (Most Complex File)
 
 **Purpose**: The heart of the app - handles QR code scanning
 
@@ -242,15 +393,28 @@ User Actions Per Item:
 
 // Major Features:
 
-A. CAMERA SCANNING
+A. MODE SELECTION
+   - On first launch: Show dialog to select Online/Offline
+   - Online: Navigate to LoginActivity for authentication
+   - Offline: Continue with local features only
+   - Mode persisted using SharedPreferences
+
+B. DUPLICATE SCAN PREVENTION
+   - Tracks last scanned QR code and timestamp
+   - Ignores same code within 5 seconds
+   - Shows confirmation dialog after 10 seconds
+   - Prevents accidental duplicate entries
+
+C. CAMERA SCANNING
    - Uses CameraX library
    - ProcessCameraProvider: Manages camera lifecycle
    - Preview: Shows what camera sees
    - ImageAnalysis: Analyzes each frame for QR codes
    
-B. IMAGE ANALYSIS
+D. IMAGE ANALYSIS
    - ML Kit BarcodeScanner processes each frame
    - Runs on background thread (cameraExecutor)
+   - When QR found: Extract data and handle it
    - When QR found: Extract data and handle it
    
 C. BARCODE HANDLING
@@ -404,22 +568,23 @@ data class ScanHistory(
 ```kotlin
 // Four Main Functions:
 
-1. saveScan()
+1. saveScan(content: String, type: String)
    - Gets current user ID
    - Creates unique scan ID
-   - Saves to Firebase path: scan_history/userId/scanId
+   - Creates ScanHistory with type ("SCANNED" or "GENERATED")
+   - Saves to Firebase path: scans/userId/scanId
    - Returns success/failure callback
 
-2. getUserScans()
+2. getUserScans(callback)
    - Queries all scans for current user
    - Sorts by timestamp (newest first)
-   - Returns list of scans
+   - Returns list of scans with type information
 
-3. deleteScan()
+3. deleteScan(scanId, callback)
    - Removes specific scan from Firebase
    - Uses scan ID to locate record
 
-4. deleteAllScans()
+4. deleteAllScans(callback)
    - Removes all scans for current user
    - Nuclear option (not currently used in UI)
 ```
@@ -433,9 +598,18 @@ data class ScanHistory(
 **Firebase Realtime Database Structure**:
 ```
 qr-scanner-app (root)
-└── scan_history
+└── scans
     ├── user123
     │   ├── scan001
+    │   │   ├── content: "https://example.com"
+    │   │   ├── timestamp: 1638360000000
+    │   │   ├── userId: "user123"
+    │   │   └── type: "SCANNED"
+    │   ├── scan002
+    │   │   ├── content: "Hello World"
+    │   │   ├── timestamp: 1638370000000
+    │   │   ├── userId: "user123"
+    │   │   └── type: "GENERATED"
     │   │   ├── id: "scan001"
     │   │   ├── userId: "user123"
     │   │   ├── content: "https://google.com"
@@ -504,6 +678,36 @@ fun formatTimestamp(timestamp: Long)
 
 ---
 
+### 9. QrGenerator.kt
+
+**Purpose**: Helper class for generating QR codes using ZXing library
+
+**What it does**:
+```kotlin
+// Main Function:
+fun generate(text: String, size: Int = 512): Bitmap
+   - Takes input text/URL
+   - Creates QR code matrix using ZXing encoder
+   - Converts to Android Bitmap
+   - Returns displayable image
+
+// Process:
+1. MultiFormatWriter encodes text to QR format
+2. Specifies QR_CODE type and dimensions
+3. BitMatrix contains QR code data
+4. Convert BitMatrix to int array (pixels)
+5. Create Bitmap from pixel array
+6. Return Bitmap for display or saving
+```
+
+**ZXing Library**:
+- "Zebra Crossing" - open source barcode library
+- Supports multiple barcode formats
+- Industry-standard for QR generation
+- Simple API for encoding and decoding
+
+---
+
 ## 📊 Data Flow Explanation
 
 ### Complete Scan-to-Display Flow
@@ -521,6 +725,12 @@ QR Code detected? → Extract barcode object
         ↓
 handleBarcode(barcode) function called
         ↓
+Check if same as lastScannedCode
+        ↓
+        ├─→ Same code AND < 5 seconds? → Ignore (prevent duplicate)
+        ├─→ Same code AND > 10 seconds? → Show "Continue?" dialog
+        └─→ Different code OR first scan? → Process normally
+        ↓
 Extract content from barcode.displayValue
         ↓
 determineScanType() analyzes content
@@ -530,22 +740,47 @@ determineScanType() analyzes content
         ├─→ Matches phone pattern? → Type = "PHONE"
         └─→ None of above? → Type = "TEXT"
         ↓
-saveScanToFirebase(content, type)
+saveScanToFirebase(content, "SCANNED") [if online mode]
         ↓
 Repository.saveScan() called
         ↓
         ├─→ Get current user ID from FirebaseAuth
         ├─→ Generate unique scan ID
-        ├─→ Create ScanHistory object
-        └─→ Save to Firebase: scan_history/userId/scanId
+        ├─→ Create ScanHistory object with type="SCANNED"
+        ├─→ Get current timestamp
+        └─→ Save to path: scans/{userId}/{scanId}
         ↓
-Firebase confirms save (async callback)
+Firebase writes data to cloud
         ↓
-Display result on screen
+Success callback returns to MainActivity
         ↓
-User can click to:
-        ├─→ URL: Open WebViewActivity
-        └─→ Text: Show dialog with Copy/Share
+Display result in UI
+        ↓
+User can click result to open or interact
+```
+
+### QR Generator Flow
+
+```
+User enters text in QrGeneratorActivity
+        ↓
+Click "Generate QR Code" button
+        ↓
+QrGenerator.generate(text) called
+        ↓
+ZXing MultiFormatWriter encodes text
+        ↓
+Creates BitMatrix (QR code data structure)
+        ↓
+Convert to Bitmap image
+        ↓
+Display in ImageView
+        ↓
+Save to Firebase (if online) with type="GENERATED"
+        ↓
+User can:
+        ├─→ Save to gallery (MediaStore)
+        └─→ Share QR code image
 ```
 
 ### History Retrieval Flow
@@ -560,24 +795,28 @@ Show loading spinner
 Repository.getUserScans() called
         ↓
         ├─→ Get current user ID
-        ├─→ Query Firebase: scan_history/userId
+        ├─→ Query Firebase: scans/userId
         └─→ Order by timestamp
         ↓
 Firebase returns DataSnapshot
         ↓
-Convert each child to ScanHistory object
+Convert each child to ScanHistory object (with type field)
         ↓
 Sort list by timestamp (descending)
         ↓
 Return list via callback
         ↓
-Adapter.updateScans(list) called
+Store as allScans list
         ↓
-RecyclerView displays items
+Apply current filter (ALL/SCANNED/GENERATED)
+        ↓
+Adapter displays filtered items in RecyclerView
         ↓
 Hide loading spinner
         ↓
-User sees scan history list
+User can change filter using Chips
+        ↓
+Filter applied locally to allScans list
 ```
 
 ---
@@ -712,7 +951,7 @@ val userId = currentUser?.uid  // null if not logged in
 val database = FirebaseDatabase.getInstance().reference
 
 // Save data
-database.child("scan_history")
+database.child("scans")
     .child(userId)
     .child(scanId)
     .setValue(scanObject)
@@ -720,7 +959,7 @@ database.child("scan_history")
     .addOnFailureListener { }
 
 // Read data
-database.child("scan_history")
+database.child("scans")
     .child(userId)
     .addListenerForSingleValueEvent(object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
@@ -732,7 +971,7 @@ database.child("scan_history")
     })
 
 // Delete data
-database.child("scan_history")
+database.child("scans")
     .child(userId)
     .child(scanId)
     .removeValue()
@@ -747,20 +986,28 @@ database.child("scan_history")
 
 ## 🧩 How Everything Works Together
 
-### Scenario 1: User Scans a URL
+### Scenario 1: User Scans a URL (Online Mode)
 
 ```
-1. User opens app → LoginActivity
-   - Enters credentials
-   - Firebase verifies
+1. User opens app → SplashActivity (2 seconds)
    - Navigates to MainActivity
 
-2. MainActivity starts
+2. MainActivity shows mode selection dialog
+   - User selects "Online Mode"
+   - Redirected to LoginActivity
+
+3. LoginActivity
+   - User enters credentials
+   - Firebase verifies
+   - Sets AppMode.isOffline = false
+   - Navigates to MainActivity
+
+4. MainActivity starts
    - Requests camera permission
    - Initializes CameraX
    - Starts ML Kit scanner
 
-3. User points camera at QR code containing "https://example.com"
+5. User points camera at QR code containing "https://example.com"
    - Camera captures frames continuously
    - ML Kit detects QR code in frame
    - Extracts: "https://example.com"
@@ -808,12 +1055,14 @@ database.child("scan_history")
    - Return via callback
 
 5. Activity receives list
+   - Store as allScans
    - Hide loading spinner
-   - Call adapter.updateScans(list)
+   - Apply current filter (default: ALL)
+   - Display filtered items in RecyclerView
 
 6. Adapter updates RecyclerView
    - Clear old data
-   - Add new data
+   - Add filtered data
    - notifyDataSetChanged()
 
 7. RecyclerView displays items
@@ -821,11 +1070,19 @@ database.child("scan_history")
    - Binds data to each item
    - Shows list on screen
 
-8. User clicks delete on an item
+8. User clicks filter chip (e.g., "Generated")
+   - Filter type changes to GENERATED
+   - Apply filter to allScans list
+   - Only show items where type == "GENERATED"
+   - Update RecyclerView
+
+9. User clicks delete on an item
    - showDeleteConfirmation() dialog appears
    - User confirms
    - repository.deleteScan(scanId)
    - Firebase removes item
+   - Remove from allScans list
+   - Reapply current filter
    - adapter.removeScan(scan)
    - Item animates out of list
 ```
@@ -859,26 +1116,84 @@ database.child("scan_history")
    - User can go back to camera
 ```
 
+### Scenario 4: User Generates QR Code
+
+```
+1. User clicks "Open QR Generator" button
+   - Intent to QrGeneratorActivity
+   - Activity opens
+
+2. User enters text: "Hello World"
+   - Types in EditText field
+   - Clicks "Generate QR Code"
+
+3. QrGenerator.generate() called
+   - ZXing encodes text to QR format
+   - Creates BitMatrix
+   - Converts to Bitmap
+
+4. QR code displayed
+   - ImageView shows generated QR
+   - If online: Save to Firebase with type="GENERATED"
+
+5. User options
+   - Click "Save to Gallery": Downloads to device
+   - Click "Share": Opens share dialog
+```
+
+### Scenario 5: User Works in Offline Mode
+
+```
+1. User opens app → SplashActivity
+   - Navigates to MainActivity
+
+2. Mode selection dialog appears
+   - User selects "Offline Mode"
+   - AppMode.isOffline = true
+   - Stays in MainActivity
+
+3. Offline features available:
+   - Camera scanning (local only)
+   - Gallery scanning (local only)
+   - QR code generation (local only)
+   - Offline banner shown
+
+4. Features disabled:
+   - Scan history (no Firebase)
+   - User profile (no authentication)
+   - No cloud synchronization
+
+5. Switching modes:
+   - User clicks menu → "Change Mode"
+   - Dialog appears again
+   - Can switch to online mode (requires login)
+```
+
 ---
 
 ## 🎨 UI/UX Flow
 
 ### Layout Files (XML)
 
-1. **activity_login.xml**: Email/password fields, login button
-2. **activity_signup.xml**: Email, password, confirm password fields
-3. **activity_main.xml**: Camera preview, result text, action buttons
-4. **activity_scan_history.xml**: RecyclerView, empty state text, loading spinner
-5. **activity_web_view.xml**: WebView component
-6. **item_scan_history.xml**: Single scan item layout (used by RecyclerView)
-7. **dialog_forgot.xml**: Password reset dialog layout
+1. **activity_splash.xml**: App logo and splash screen
+2. **activity_login.xml**: Email/password fields, login button
+3. **activity_signup.xml**: Email, password, confirm password fields
+4. **activity_main.xml**: Camera preview, result text, action buttons, QR generator button
+5. **activity_qr_generator.xml**: Input field, generate button, QR display, save/share buttons
+6. **activity_scan_history.xml**: RecyclerView, filter chips, empty state text, loading spinner
+7. **activity_profile.xml**: User info display, logout button
+8. **activity_web_view.xml**: WebView component
+9. **item_scan_history.xml**: Single scan item layout (used by RecyclerView)
+10. **dialog_forgot.xml**: Password reset dialog layout
 
 ### Material Design Elements
 - Buttons with ripple effects
 - CardViews for list items
+- Chip groups for filtering
 - ProgressBar for loading states
 - TextViews with proper styling
 - Icons from Material Design icon set
+- Toolbar with menu items
 
 ---
 
@@ -894,14 +1209,18 @@ database.child("scan_history")
    - User ID used as database path
    - No cross-user data access
 
-3. **Camera Permissions**
-   - Required before accessing camera
+3. **Offline Mode Privacy**
+   - No data sent to cloud in offline mode
+   - All operations local to device
+   - User choice between privacy and features
+
+4. **Permissions**
+   - Camera: Only requested when needed
+   - Storage: For saving QR codes to gallery
+   - Internet: For Firebase operations
    - User can revoke anytime
    - App handles permission denial gracefully
 
-4. **Internet Permissions**
-   - Required for Firebase
-   - Declared in AndroidManifest.xml
 
 ---
 
@@ -921,8 +1240,8 @@ database.child("scan_history")
     android:label="@string/app_name"       <!-- App name -->
     android:theme="@style/Theme.QRscannerapp">  <!-- UI theme -->
     
-    <!-- LoginActivity is LAUNCHER (first screen) -->
-    <activity android:name=".LoginActivity" android:exported="true">
+    <!-- SplashActivity is LAUNCHER (first screen shown) -->
+    <activity android:name=".SplashActivity" android:exported="true">
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -931,8 +1250,11 @@ database.child("scan_history")
     
     <!-- Other activities -->
     <activity android:name=".MainActivity" />
+    <activity android:name=".LoginActivity" />
     <activity android:name=".SignupActivity" />
+    <activity android:name=".QrGeneratorActivity" />
     <activity android:name=".ScanHistoryActivity" />
+    <activity android:name=".ProfileActivity" />
     <activity android:name=".WebViewActivity" />
 </application>
 ```
@@ -945,36 +1267,45 @@ database.child("scan_history")
 
 1. **Modern Android Development**
    - Kotlin language
-   - Material Design UI
+   - Material Design UI with Material 3 components
    - Latest Android libraries (CameraX, ML Kit)
+   - ViewBinding for type-safe view access
 
 2. **Software Architecture**
    - Separation of concerns (Activities, Repository, Models)
    - Clean code organization
    - Repository pattern for data management
+   - Singleton pattern for app-wide state (AppMode)
 
 3. **Cloud Integration**
    - Firebase Authentication
-   - Real-time Database
-   - Cloud synchronization
+   - Firebase Realtime Database
+   - Cloud synchronization across devices
+   - Offline/Online mode architecture
 
 4. **Mobile-Specific Features**
    - Camera access and control
-   - Image processing
+   - Image processing from gallery
    - Machine learning integration (ML Kit)
    - Permission handling
+   - Flashlight control
+   - QR code generation
 
 5. **User Experience**
-   - Intuitive navigation
-   - Error handling
-   - Loading states
-   - Responsive feedback
+   - Intuitive navigation with splash screen
+   - Error handling and validation
+   - Loading states with progress indicators
+   - Responsive feedback (Toasts, Dialogs)
+   - Filter functionality with Material Chips
+   - Duplicate scan prevention
 
 6. **Data Management**
    - CRUD operations (Create, Read, Update, Delete)
-   - Data models
+   - Data models with type safety
    - Asynchronous operations
    - Callbacks and listeners
+   - Local storage (SharedPreferences)
+   - Cloud storage (Firebase)
 
 ---
 
@@ -982,25 +1313,31 @@ database.child("scan_history")
 
 ### What Makes This App Production-Ready:
 
-✅ **Authentication**: Secure user accounts  
+✅ **Authentication**: Secure user accounts with Firebase  
 ✅ **Cloud Storage**: Data persists across devices  
+✅ **Offline Mode**: Full functionality without internet  
 ✅ **Error Handling**: Graceful failures with user feedback  
 ✅ **Permissions**: Proper Android permission handling  
 ✅ **Lifecycle Management**: No memory leaks, proper cleanup  
 ✅ **Modern Architecture**: Maintainable and scalable code  
 ✅ **Material Design**: Professional, consistent UI  
 ✅ **Async Operations**: Non-blocking UI, smooth experience  
+✅ **Duplicate Prevention**: Smart detection avoids repeated scans  
+✅ **Type Filtering**: Separate scanned vs generated QR codes  
+✅ **QR Generation**: Create and share QR codes
 
 ### Technologies Mastered:
 
-1. **Kotlin Programming**: Variables, functions, classes, lambdas
-2. **Android Framework**: Activities, Intents, Lifecycle, Permissions
-3. **Firebase Services**: Auth, Realtime Database, Cloud operations
-4. **CameraX**: Modern camera API, preview, analysis
-5. **ML Kit**: Machine learning, barcode detection
-6. **RecyclerView**: Efficient list display, adapter pattern
-7. **ViewBinding**: Type-safe view access
-8. **Async Programming**: Callbacks, threads, executors
+1. **Kotlin Programming**: Variables, functions, classes, lambdas, data classes, object classes
+2. **Android Framework**: Activities, Intents, Lifecycle, Permissions, SharedPreferences
+3. **Firebase Services**: Authentication, Realtime Database, Cloud operations
+4. **CameraX**: Modern camera API, preview, analysis, flashlight control
+5. **ML Kit**: Machine learning, barcode detection and scanning
+6. **RecyclerView**: Efficient list display, adapter pattern, ViewHolder pattern
+7. **ViewBinding**: Type-safe view access, eliminating findViewById
+8. **Async Programming**: Callbacks, threads, executors, Firebase listeners
+9. **Material Design**: Chips, Cards, Dialogs, Progress indicators
+10. **ZXing Library**: QR code generation and encoding
 
 ---
 
@@ -1020,26 +1357,34 @@ If you want to understand more:
 
 When explaining to your teacher:
 
-1. **Start with the big picture**: "It's a QR scanner with cloud storage"
-2. **Show the flow**: Login → Scan → Save → History
-3. **Highlight key tech**: Firebase, ML Kit, CameraX
-4. **Demonstrate features**: Live scan, history, URL opening
-5. **Explain architecture**: Show how code is organized
-6. **Discuss challenges**: Permission handling, async operations
-7. **Mention scalability**: Cloud database can handle many users
+1. **Start with the big picture**: "It's a QR scanner with cloud storage and offline capability"
+2. **Show the flow**: Mode Selection → Login → Scan → Save → History with Filters
+3. **Highlight key tech**: Firebase, ML Kit, CameraX, ZXing
+4. **Demonstrate features**: Live scan with duplicate prevention, history filtering, QR generation
+5. **Explain architecture**: Show how code is organized (Repository pattern, separation of concerns)
+6. **Discuss challenges**: Permission handling, async operations, duplicate scan prevention
+7. **Mention scalability**: Cloud database can handle many users, offline mode for privacy
 
 ### Demo Script:
 
 ```
-1. Open app → Login screen
-2. Sign in with account
-3. Point camera at QR code → Shows instant scanning
-4. Click result → Opens in browser
-5. Go back → Scan another (text this time)
-6. Click text → Show dialog with actions
-7. Open history → Show all past scans
-8. Delete a scan → Show it works
-9. Explain Firebase sync → Same history on any device
+1. Open app → Splash screen appears
+2. Mode selection → Choose "Online Mode"
+3. Login screen → Sign in with account
+4. Point camera at QR code → Shows instant scanning
+5. Scan same code again → Prevented (duplicate detection)
+6. Click result → Opens in browser (if URL)
+7. Go back → Scan another (text this time)
+8. Click text → Show dialog with Copy/Share options
+9. Click "Open QR Generator" → Generate new QR code
+10. Enter text → Generate → Save to history
+11. Open history → Show filter chips (All/Scanned/Generated)
+12. Switch to "Generated" filter → Shows only created QR codes
+13. Click profile icon → View user information
+14. Delete a scan → Confirm and watch it disappear
+15. Menu → Change Mode → Switch to offline
+16. Demonstrate offline scanning works without cloud
+17. Explain Firebase sync → Same history on any device
 ```
 
 ---
@@ -1049,15 +1394,30 @@ When explaining to your teacher:
 This QR Scanner app is a comprehensive Android application that demonstrates:
 
 - **Mobile app development** with Kotlin
-- **Cloud integration** with Firebase
-- **Machine learning** with ML Kit
-- **Camera programming** with CameraX
-- **Modern UI design** with Material Design
-- **Software architecture** best practices
+- **Cloud integration** with Firebase (Authentication + Realtime Database)
+- **Machine learning** with ML Kit for barcode scanning
+- **Camera programming** with CameraX for real-time scanning
+- **Modern UI design** with Material Design 3 components
+- **Software architecture** best practices (Repository pattern, MVVM concepts)
+- **Offline/Online architecture** with SharedPreferences
+- **QR code generation** with ZXing library
+- **Advanced features** like duplicate prevention and content filtering
 
 It's a real-world application that could be published to the Play Store with some additional polish. The code is well-organized, follows Android best practices, and implements features that users would actually find useful.
 
-The combination of authentication, real-time scanning, cloud storage, and intuitive UI makes this a solid portfolio project that demonstrates your understanding of modern Android development.
+The combination of authentication, real-time scanning, cloud storage, offline mode, QR generation, and intuitive UI with filtering makes this a solid portfolio project that demonstrates your understanding of modern Android development.
+
+**Key Features Summary:**
+- 📷 Real-time QR scanning with duplicate prevention
+- 🖼️ Gallery image scanning
+- 🔧 QR code generator
+- 📊 Scan history with smart filtering (Scanned/Generated/All)
+- 🌐 Online mode with Firebase sync
+- 📱 Offline mode for privacy
+- 👤 User profile management
+- 🔦 Flashlight toggle
+- 🔒 Secure authentication
+- 🎨 Material Design 3 UI
 
 ---
 
