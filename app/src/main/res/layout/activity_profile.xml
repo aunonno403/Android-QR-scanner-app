@@ -87,20 +87,6 @@
             android:textColor="#333333"
             android:padding="12dp"
             android:background="@drawable/rounded_background"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Total Scans Display -->
-        <TextView
-            android:id="@+id/totalScansText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Total Scans: 0"
-            android:textSize="18sp"
-            android:textColor="@color/lavender"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:padding="16dp"
-            android:background="@drawable/rounded_background"
             android:layout_marginBottom="24dp" />
 
         <!-- Save Button -->

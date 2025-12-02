@@ -17,3 +17,17 @@ local.properties
 # Firebase config - contains sensitive API keys
 google-services.json
 app/google-services.json
+
+# Personal documentation files (keep local, not for GitHub)
+PROJECT_EXPLANATION.md
+QUICK_SETUP.md
+FIREBASE_IMPLEMENTATION_GUIDE.md
+FEATURE_IMPLEMENTATION_GUIDE.md
+IMPLEMENTATION_SUMMARY.md
+PROFILE_FEATURE_IMPLEMENTATION.md
+DUPLICATE_SCAN_FIX.md
+CLEANUP_SUMMARY.md
+
+# Keep README.md for GitHub (do not ignore)
+!README.md
+

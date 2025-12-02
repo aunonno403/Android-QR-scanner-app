@@ -25,7 +25,6 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var profileImageView: ImageView
     private lateinit var displayNameEdit: EditText
     private lateinit var emailText: TextView
-    private lateinit var totalScansText: TextView
     private lateinit var changePhotoText: TextView
     private lateinit var saveButton: Button
     private lateinit var logoutButton: Button
@@ -61,7 +60,6 @@ class ProfileActivity : AppCompatActivity() {
         profileImageView = findViewById(R.id.profileImageView)
         displayNameEdit = findViewById(R.id.displayNameEdit)
         emailText = findViewById(R.id.emailText)
-        totalScansText = findViewById(R.id.totalScansText)
         changePhotoText = findViewById(R.id.changePhotoText)
         saveButton = findViewById(R.id.saveButton)
         logoutButton = findViewById(R.id.logoutButton)
@@ -119,13 +117,11 @@ class ProfileActivity : AppCompatActivity() {
         val user = FirebaseAuth.getInstance().currentUser
         emailText.text = user?.email ?: "No email"
         displayNameEdit.setText(user?.displayName ?: "")
-        totalScansText.text = "Total Scans: 0"
     }
 
     private fun displayProfile(profile: UserProfile) {
         displayNameEdit.setText(profile.displayName)
         emailText.text = profile.email
-        totalScansText.text = "Total Scans: ${profile.totalScans}"
 
         // Load Base64 image if exists
         if (profile.photoBase64.isNotEmpty()) {
