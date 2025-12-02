@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +24,12 @@ class QrGeneratorActivity : AppCompatActivity() {
         binding = ActivityQrGeneratorBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        if (AppMode.isOffline) {
+            binding.offlineBanner.visibility = View.VISIBLE
+        } else {
+            binding.offlineBanner.visibility = View.GONE
+        }
+
         binding.generateButton.setOnClickListener {
             val text = binding.inputText.text.toString()
             if (text.isBlank()) {
@@ -33,15 +40,19 @@ class QrGeneratorActivity : AppCompatActivity() {
             lastBitmap = bitmap
             binding.qrImage.setImageBitmap(bitmap)
 
-            // Save generated QR content into scan history (cloud via Firebase)
-            repository.saveScan(text, "GENERATED") { success, error ->
-                runOnUiThread {
-                    if (success) {
-                        Toast.makeText(this, "Saved generated QR to history", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "Failed to save to history: ${error ?: "unknown"}", Toast.LENGTH_SHORT).show()
+            if (!AppMode.isOffline) {
+                // Save generated QR content into scan history (cloud via Firebase)
+                repository.saveScan(text, "GENERATED") { success, error ->
+                    runOnUiThread {
+                        if (success) {
+                            Toast.makeText(this, "Saved generated QR to history", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, "Failed to save to history: ${error ?: "unknown"}", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
+            } else {
+                Toast.makeText(this, "Offline mode: not saved to cloud", Toast.LENGTH_SHORT).show()
             }
         }
 

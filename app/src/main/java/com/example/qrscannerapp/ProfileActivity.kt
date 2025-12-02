@@ -14,6 +14,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.qrscannerapp.models.UserProfile
 import com.example.qrscannerapp.repository.UserProfileRepository
@@ -27,6 +28,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var totalScansText: TextView
     private lateinit var changePhotoText: TextView
     private lateinit var saveButton: Button
+    private lateinit var logoutButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var repository: UserProfileRepository
 
@@ -62,6 +64,7 @@ class ProfileActivity : AppCompatActivity() {
         totalScansText = findViewById(R.id.totalScansText)
         changePhotoText = findViewById(R.id.changePhotoText)
         saveButton = findViewById(R.id.saveButton)
+        logoutButton = findViewById(R.id.logoutButton)
         progressBar = findViewById(R.id.progressBar)
 
         profileImageView.setOnClickListener {
@@ -74,6 +77,10 @@ class ProfileActivity : AppCompatActivity() {
 
         saveButton.setOnClickListener {
             saveProfile()
+        }
+
+        logoutButton.setOnClickListener {
+            showLogoutConfirmation()
         }
 
         loadProfile()
@@ -184,6 +191,38 @@ class ProfileActivity : AppCompatActivity() {
     private fun showLoading(loading: Boolean) {
         progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         saveButton.isEnabled = !loading
+    }
+
+    private fun showLogoutConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Logout")
+            .setMessage("Are you sure you want to logout?")
+            .setPositiveButton("Logout") { dialog, _ ->
+                performLogout()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun performLogout() {
+        // Sign out from Firebase
+        FirebaseAuth.getInstance().signOut()
+
+        // Reset app mode to require mode selection on next launch
+        AppMode.isOffline = false
+        val prefs = getSharedPreferences("app_mode_prefs", MODE_PRIVATE)
+        prefs.edit().clear().apply()
+
+        Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show()
+
+        // Navigate to MainActivity and clear back stack
+        val intent = Intent(this, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        startActivity(intent)
+        finish()
     }
 }
 

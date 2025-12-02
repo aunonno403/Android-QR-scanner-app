@@ -6,6 +6,8 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
@@ -72,16 +74,25 @@ class MainActivity : AppCompatActivity() {
     private var rescanDialogShown: Boolean = false
     private var firstScanTimestamp: Long = 0
 
+    private lateinit var offlineBanner: TextView
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppMode.load(this) // load persisted mode before UI decisions
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        // Setup toolbar
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.title = "QR Scanner"
 
         previewView = findViewById(R.id.previewView)
         resultTextView = findViewById(R.id.resultTextView)
         scannedImageView = findViewById(R.id.scannedImageView)
         flashButton = findViewById(R.id.flashButton)
+        offlineBanner = findViewById(R.id.offlineBanner)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         barcodeScanner = BarcodeScanning.getClient()
@@ -172,7 +183,8 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-
+        promptForModeIfNeeded()
+        applyModeUi()
     }
 
     private fun startCamera() {
@@ -272,6 +284,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveScanToFirebase(content: String, type: String) {
+        if (AppMode.isOffline) {
+            Log.d("MainActivity", "Offline mode: scan not saved to Firebase")
+            return
+        }
         val currentTime = System.currentTimeMillis()
 
         // Check if this is a duplicate scan within the debounce interval
@@ -403,10 +419,129 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun promptForModeIfNeeded() {
+        // Only show dialog if first launch or user explicitly wants to change; here we show if neither offline nor authenticated online
+        val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+        val isLoggedIn = auth.currentUser != null
+        if (!AppMode.isOffline && isLoggedIn) return // already online and logged in
+        if (AppMode.isOffline) return // offline mode previously chosen
+        AlertDialog.Builder(this)
+            .setTitle("Select Mode")
+            .setMessage("Choose how you want to use the app:")
+            .setPositiveButton("Online Mode") { d, _ ->
+                AppMode.isOffline = false
+                AppMode.save(this)
+                // Require login if not authenticated
+                if (auth.currentUser == null) {
+                    startActivity(Intent(this, LoginActivity::class.java))
+                } else {
+                    applyModeUi()
+                }
+                d.dismiss()
+            }
+            .setNegativeButton("Offline Mode") { d, _ ->
+                AppMode.isOffline = true
+                AppMode.save(this)
+                applyModeUi()
+                Toast.makeText(this, "Offline mode enabled", Toast.LENGTH_SHORT).show()
+                d.dismiss()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun applyModeUi() {
+        val historyButton = findViewById<ImageButton>(R.id.historyButton)
+        val profileButton = findViewById<ImageButton>(R.id.profileButton)
+        if (AppMode.isOffline) {
+            historyButton.visibility = View.GONE
+            profileButton.visibility = View.GONE
+            offlineBanner.visibility = View.VISIBLE
+        } else {
+            offlineBanner.visibility = View.GONE
+            // Show only if user is logged in
+            val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+            val loggedIn = auth.currentUser != null
+            historyButton.visibility = if (loggedIn) View.VISIBLE else View.GONE
+            profileButton.visibility = if (loggedIn) View.VISIBLE else View.GONE
+            if (!loggedIn) {
+                resultTextView.text = "Login required for online features. Please sign in." // fallback
+            }
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_change_mode -> {
+                showChangeModeDialog()
+                true
+            }
+            R.id.action_about -> {
+                showAboutDialog()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun showChangeModeDialog() {
+        val currentModeText = if (AppMode.isOffline) "Offline" else "Online"
+        AlertDialog.Builder(this)
+            .setTitle("Change Mode")
+            .setMessage("Current mode: $currentModeText\n\nSelect a new mode:")
+            .setPositiveButton("Online Mode") { d, _ ->
+                if (AppMode.isOffline) {
+                    // Switching from offline to online
+                    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                    if (auth.currentUser == null) {
+                        // Need to login
+                        AppMode.isOffline = false
+                        AppMode.save(this)
+                        startActivity(Intent(this, LoginActivity::class.java))
+                        finish()
+                    } else {
+                        // Already logged in
+                        AppMode.isOffline = false
+                        AppMode.save(this)
+                        applyModeUi()
+                        Toast.makeText(this, "Switched to Online mode", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "Already in Online mode", Toast.LENGTH_SHORT).show()
+                }
+                d.dismiss()
+            }
+            .setNegativeButton("Offline Mode") { d, _ ->
+                if (!AppMode.isOffline) {
+                    // Switching from online to offline
+                    AppMode.isOffline = true
+                    AppMode.save(this)
+                    applyModeUi()
+                    Toast.makeText(this, "Switched to Offline mode", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Already in Offline mode", Toast.LENGTH_SHORT).show()
+                }
+                d.dismiss()
+            }
+            .setNeutralButton("Cancel") { d, _ -> d.dismiss() }
+            .show()
+    }
+
+    private fun showAboutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("About QR Scanner")
+            .setMessage("QR Scanner App\nVersion 1.0\n\nFeatures:\n• Scan QR codes\n• Generate QR codes\n• Offline mode support\n• Cloud sync (Online mode)\n• Scan history\n• User profiles")
+            .setPositiveButton("OK") { d, _ -> d.dismiss() }
+            .show()
+    }
 }

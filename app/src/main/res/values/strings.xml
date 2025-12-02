@@ -17,4 +17,7 @@
     <string name="scanned_image">Scanned image</string>
     <string name="scan_history">Scan history</string>
     <string name="open_qr_generator">Open QR generator</string>
+    <string name="prompt_login_online_mode">Login required for online features. Please sign in.</string>
+    <string name="offline_banner_scans">OFFLINE MODE: Scans are not saved</string>
+    <string name="offline_banner_generated">OFFLINE MODE: Generated codes are not saved to cloud</string>
 </resources>

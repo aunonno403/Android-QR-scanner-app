@@ -16,4 +16,11 @@
     </style>
 
     <style name="Theme.QRscannerapp" parent="Base.Theme.QRscannerapp" />
+
+    <!-- Splash Screen Theme -->
+    <style name="SplashTheme" parent="Theme.QRscannerapp">
+        <item name="android:windowBackground">@color/lavender</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
 </resources>
